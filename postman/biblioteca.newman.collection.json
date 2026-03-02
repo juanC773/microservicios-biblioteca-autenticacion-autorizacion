@@ -1,0 +1,766 @@
+{
+  "info": {
+    "_postman_id": "8c92b7f8-7b80-4c7e-9f65-1ac12b682c0f",
+    "name": "Biblioteca - Newman (Keycloak + Roles)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Admin token (master realm)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('kc_admin_token', json.access_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "password", "type": "text" },
+            { "key": "client_id", "value": "admin-cli", "type": "text" },
+            { "key": "username", "value": "{{kc_admin_user}}", "type": "text" },
+            { "key": "password", "value": "{{kc_admin_pass}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{kc_base}}/realms/master/protocol/openid-connect/token",
+          "host": ["{{kc_base}}"],
+          "path": ["realms", "master", "protocol", "openid-connect", "token"]
+        }
+      }
+    },
+    {
+      "name": "01 - Find test user (biblioteca realm)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "const users = pm.response.json();",
+              "if (Array.isArray(users) && users.length > 0) {",
+              "  pm.collectionVariables.set('test_user_id', users[0].id);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{kc_admin_token}}" }
+        ],
+        "url": {
+          "raw": "{{kc_base}}/admin/realms/{{kc_realm}}/users?username={{test_user}}",
+          "host": ["{{kc_base}}"],
+          "path": ["admin", "realms", "{{kc_realm}}", "users"],
+          "query": [{ "key": "username", "value": "{{test_user}}" }]
+        }
+      }
+    },
+    {
+      "name": "02 - Create test user if missing (ignore 409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 201 created or 409 exists', function () {",
+              "  pm.expect([201, 409]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{kc_admin_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{test_user}}\",\n  \"enabled\": true\n}"
+        },
+        "url": {
+          "raw": "{{kc_base}}/admin/realms/{{kc_realm}}/users",
+          "host": ["{{kc_base}}"],
+          "path": ["admin", "realms", "{{kc_realm}}", "users"]
+        }
+      }
+    },
+    {
+      "name": "03 - Find test user again (capture id)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "const users = pm.response.json();",
+              "pm.test('user exists', function () {",
+              "  pm.expect(Array.isArray(users) && users.length > 0).to.be.true;",
+              "});",
+              "pm.collectionVariables.set('test_user_id', users[0].id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{kc_admin_token}}" }
+        ],
+        "url": {
+          "raw": "{{kc_base}}/admin/realms/{{kc_realm}}/users?username={{test_user}}",
+          "host": ["{{kc_base}}"],
+          "path": ["admin", "realms", "{{kc_realm}}", "users"],
+          "query": [{ "key": "username", "value": "{{test_user}}" }]
+        }
+      }
+    },
+    {
+      "name": "04 - Set password for test user",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 204', function () {",
+              "  pm.expect(pm.response.code).to.eql(204);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{kc_admin_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"password\",\n  \"value\": \"{{test_user_pass}}\",\n  \"temporary\": false\n}"
+        },
+        "url": {
+          "raw": "{{kc_base}}/admin/realms/{{kc_realm}}/users/{{test_user_id}}/reset-password",
+          "host": ["{{kc_base}}"],
+          "path": ["admin", "realms", "{{kc_realm}}", "users", "{{test_user_id}}", "reset-password"]
+        }
+      }
+    },
+    {
+      "name": "05 - Get realm role ROLE_USER",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "const role = pm.response.json();",
+              "pm.collectionVariables.set('role_user_payload', JSON.stringify([role]));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{kc_admin_token}}" }
+        ],
+        "url": {
+          "raw": "{{kc_base}}/admin/realms/{{kc_realm}}/roles/ROLE_USER",
+          "host": ["{{kc_base}}"],
+          "path": ["admin", "realms", "{{kc_realm}}", "roles", "ROLE_USER"]
+        }
+      }
+    },
+    {
+      "name": "06 - Assign ROLE_USER to test user",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 204', function () {",
+              "  pm.expect(pm.response.code).to.eql(204);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{kc_admin_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{{role_user_payload}}"
+        },
+        "url": {
+          "raw": "{{kc_base}}/admin/realms/{{kc_realm}}/users/{{test_user_id}}/role-mappings/realm",
+          "host": ["{{kc_base}}"],
+          "path": ["admin", "realms", "{{kc_realm}}", "users", "{{test_user_id}}", "role-mappings", "realm"]
+        }
+      }
+    },
+    {
+      "name": "10 - Token librarian1 (biblioteca realm)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('token_librarian', json.access_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "password", "type": "text" },
+            { "key": "client_id", "value": "{{kc_client_id}}", "type": "text" },
+            { "key": "client_secret", "value": "{{kc_client_secret}}", "type": "text" },
+            { "key": "username", "value": "{{kc_librarian_user}}", "type": "text" },
+            { "key": "password", "value": "{{kc_librarian_pass}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{kc_base}}/realms/{{kc_realm}}/protocol/openid-connect/token",
+          "host": ["{{kc_base}}"],
+          "path": ["realms", "{{kc_realm}}", "protocol", "openid-connect", "token"]
+        }
+      }
+    },
+    {
+      "name": "11 - Token test user (ROLE_USER)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('token_user', json.access_token);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "password", "type": "text" },
+            { "key": "client_id", "value": "{{kc_client_id}}", "type": "text" },
+            { "key": "client_secret", "value": "{{kc_client_secret}}", "type": "text" },
+            { "key": "username", "value": "{{test_user}}", "type": "text" },
+            { "key": "password", "value": "{{test_user_pass}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{kc_base}}/realms/{{kc_realm}}/protocol/openid-connect/token",
+          "host": ["{{kc_base}}"],
+          "path": ["realms", "{{kc_realm}}", "protocol", "openid-connect", "token"]
+        }
+      }
+    },
+    {
+      "name": "20 - Circulación public status (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{circulacion_base}}/circulacion/public/status",
+          "host": ["{{circulacion_base}}"],
+          "path": ["circulacion", "public", "status"]
+        }
+      }
+    },
+    {
+      "name": "21 - Catálogo GET /libros/1 (public 200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{catalogo_base}}/libros/1",
+          "host": ["{{catalogo_base}}"],
+          "path": ["libros", "1"]
+        }
+      }
+    },
+    {
+      "name": "22 - Catálogo PUT /libros/1/disponibilidad (no token => 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 401', function () {",
+              "  pm.expect(pm.response.code).to.eql(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "false" },
+        "url": {
+          "raw": "{{catalogo_base}}/libros/1/disponibilidad",
+          "host": ["{{catalogo_base}}"],
+          "path": ["libros", "1", "disponibilidad"]
+        }
+      }
+    },
+    {
+      "name": "23 - Catálogo PUT /libros/1/disponibilidad (ROLE_USER => 403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 403', function () {",
+              "  pm.expect(pm.response.code).to.eql(403);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_user}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "false" },
+        "url": {
+          "raw": "{{catalogo_base}}/libros/1/disponibilidad",
+          "host": ["{{catalogo_base}}"],
+          "path": ["libros", "1", "disponibilidad"]
+        }
+      }
+    },
+    {
+      "name": "24 - Catálogo PUT /libros/1/disponibilidad (ROLE_LIBRARIAN => 200/204)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200 or 204', function () {",
+              "  pm.expect([200, 204]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_librarian}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": { "mode": "raw", "raw": "true" },
+        "url": {
+          "raw": "{{catalogo_base}}/libros/1/disponibilidad",
+          "host": ["{{catalogo_base}}"],
+          "path": ["libros", "1", "disponibilidad"]
+        }
+      }
+    },
+    {
+      "name": "30 - Usuarios GET /usuarios/1 (no token => 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 401', function () {",
+              "  pm.expect(pm.response.code).to.eql(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{usuarios_base}}/usuarios/1",
+          "host": ["{{usuarios_base}}"],
+          "path": ["usuarios", "1"]
+        }
+      }
+    },
+    {
+      "name": "31 - Usuarios GET /usuarios/1 (ROLE_USER => 200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token_user}}" }],
+        "url": {
+          "raw": "{{usuarios_base}}/usuarios/1",
+          "host": ["{{usuarios_base}}"],
+          "path": ["usuarios", "1"]
+        }
+      }
+    },
+    {
+      "name": "32 - Usuarios PUT /usuarios/1/email (ROLE_USER => 200/204)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200 or 204', function () {",
+              "  pm.expect([200, 204]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_user}}" },
+          { "key": "Content-Type", "value": "text/plain" }
+        ],
+        "body": { "mode": "raw", "raw": "newman{{$timestamp}}@correo.com" },
+        "url": {
+          "raw": "{{usuarios_base}}/usuarios/1/email",
+          "host": ["{{usuarios_base}}"],
+          "path": ["usuarios", "1", "email"]
+        }
+      }
+    },
+    {
+      "name": "40 - Notificación POST /notificar (ROLE_USER => 403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 403', function () {",
+              "  pm.expect(pm.response.code).to.eql(403);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_user}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"usuarioId\": \"1\",\n  \"mensaje\": \"Prueba Newman (ROLE_USER)\"\n}"
+        },
+        "url": {
+          "raw": "{{notificacion_base}}/notificar",
+          "host": ["{{notificacion_base}}"],
+          "path": ["notificar"]
+        }
+      }
+    },
+    {
+      "name": "41 - Notificación POST /notificar (ROLE_LIBRARIAN => 200/204)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200 or 204', function () {",
+              "  pm.expect([200, 204]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token_librarian}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"usuarioId\": \"1\",\n  \"mensaje\": \"Prueba Newman (ROLE_LIBRARIAN)\"\n}"
+        },
+        "url": {
+          "raw": "{{notificacion_base}}/notificar",
+          "host": ["{{notificacion_base}}"],
+          "path": ["notificar"]
+        }
+      }
+    },
+    {
+      "name": "50 - Circulación POST /prestar (no token => 401)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 401', function () {",
+              "  pm.expect(pm.response.code).to.eql(401);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": {
+          "raw": "{{circulacion_base}}/circulacion/prestar?usuarioId=1&libroId=1",
+          "host": ["{{circulacion_base}}"],
+          "path": ["circulacion", "prestar"],
+          "query": [
+            { "key": "usuarioId", "value": "1" },
+            { "key": "libroId", "value": "1" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "51 - Circulación POST /prestar (ROLE_USER => 403)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 403', function () {",
+              "  pm.expect(pm.response.code).to.eql(403);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token_user}}" }],
+        "url": {
+          "raw": "{{circulacion_base}}/circulacion/prestar?usuarioId=1&libroId=1",
+          "host": ["{{circulacion_base}}"],
+          "path": ["circulacion", "prestar"],
+          "query": [
+            { "key": "usuarioId", "value": "1" },
+            { "key": "libroId", "value": "1" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "52 - Circulación POST /prestar (ROLE_LIBRARIAN => 200/204)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200 or 204', function () {",
+              "  pm.expect([200, 204]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token_librarian}}" }],
+        "url": {
+          "raw": "{{circulacion_base}}/circulacion/prestar?usuarioId=1&libroId=1",
+          "host": ["{{circulacion_base}}"],
+          "path": ["circulacion", "prestar"],
+          "query": [
+            { "key": "usuarioId", "value": "1" },
+            { "key": "libroId", "value": "1" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "53 - Circulación GET /prestamos (ROLE_USER => 200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token_user}}" }],
+        "url": {
+          "raw": "{{circulacion_base}}/circulacion/prestamos",
+          "host": ["{{circulacion_base}}"],
+          "path": ["circulacion", "prestamos"]
+        }
+      }
+    },
+    {
+      "name": "54 - Circulación GET /prestamos (capture prestamoId libroId=1)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200', function () {",
+              "  pm.expect(pm.response.code).to.eql(200);",
+              "});",
+              "if (pm.response.code !== 200) { return; }",
+              "let prestamos;",
+              "try { prestamos = pm.response.json(); } catch (e) { return; }",
+              "const match = Array.isArray(prestamos) ? prestamos.find(p => p && p.libroId && (p.libroId.libroid_value || p.libroId) === '1' && p.estado === 'ACTIVO') : null;",
+              "pm.test('found prestamo ACTIVO for libroId=1', function () {",
+              "  pm.expect(match).to.be.ok;",
+              "});",
+              "if (match && match.id) {",
+              "  const pid = match.id.prestamoid_value != null ? match.id.prestamoid_value : (typeof match.id === 'string' ? match.id : null);",
+              "  if (pid) pm.collectionVariables.set('prestamo_id_book1', pid);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token_librarian}}" }],
+        "url": {
+          "raw": "{{circulacion_base}}/circulacion/prestamos",
+          "host": ["{{circulacion_base}}"],
+          "path": ["circulacion", "prestamos"]
+        }
+      }
+    },
+    {
+      "name": "55 - Circulación POST /devolver (ROLE_LIBRARIAN => 200/204)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status 200 or 204', function () {",
+              "  pm.expect([200, 204]).to.include(pm.response.code);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{token_librarian}}" }],
+        "url": {
+          "raw": "{{circulacion_base}}/circulacion/devolver?prestamoId={{prestamo_id_book1}}",
+          "host": ["{{circulacion_base}}"],
+          "path": ["circulacion", "devolver"],
+          "query": [{ "key": "prestamoId", "value": "{{prestamo_id_book1}}" }]
+        }
+      }
+    }
+  ]
+}
+

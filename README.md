@@ -67,6 +67,16 @@ En cada Swagger: **Authorize** → pegar el JWT (token obtenido de Keycloak) →
 
 **Pantallazos de Swagger** usados en la entrega: **[docs/swagger pantallazos](docs/swagger%20pantallazos)**.
 
+## Probar endpoints con Newman (Postman CLI)
+
+En la carpeta **[postman/](postman/)** hay una colección y un entorno para ejecutar todas las pruebas de endpoints desde la terminal (sin abrir Postman). Requisitos: Keycloak y los cuatro microservicios en marcha. Desde la raíz del proyecto:
+
+```powershell
+npx newman run postman/biblioteca.newman.collection.json -e postman/local.environment.json -r cli
+```
+
+Detalles y alternativas en **[postman/README.md](postman/README.md)**.
+
 ## Entregables de la tarea
 
 - **Código fuente**: este repositorio (los cuatro microservicios y la raíz).
@@ -88,6 +98,10 @@ biblioteca-seguridad/
 │   ├── como-exportar-keycloak.md      # Cómo exportar el realm
 │   ├── realm-export.json              # Export del realm (config Keycloak)
 │   └── swagger pantallazos/           # Capturas de Swagger UI
+├── postman/                           # Colección Newman + entorno (pruebas CLI)
+│   ├── biblioteca.newman.collection.json
+│   ├── local.environment.json
+│   └── README.md
 ├── docker-compose.yml                 # Keycloak
 ├── run-all.ps1
 └── README.md
