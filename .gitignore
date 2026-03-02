@@ -1,0 +1,16 @@
+# Documentación excluida del repo
+docs/pruebas-endpoints-postman.md
+docs/resumen-cambios-implementacion.md
+
+# Scripts / runtime local
+.microservicios.pids.json
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
